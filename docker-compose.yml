@@ -1,0 +1,59 @@
+# docker-compose.yml (الإصدار المطور)
+# امسح سطر "version" لو كان موجود
+
+services:
+  # 1. سيرفر الويب (زي ما هو)
+  web:
+    image: httpd:2.4
+    container_name: vuln_apache
+    ports:
+      - "8082:80"
+    volumes:
+      - ./www:/usr/local/apache2/htdocs:rw
+      - ./apache_conf/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+    restart: unless-stopped
+    # ملحوظة: اللوجات هتظهر في الترمينال بسبب إعدادات httpd.conf
+
+  # 2. الخدمة الجديدة: سيرفر FTP (vsftpd)
+  ftp:
+    image: fauria/vsftpd:latest
+    container_name: vuln_ftp
+    ports:
+      - "21:21"
+      - "21100-21110:21100-21110"
+    environment:
+      - FTP_USER=testuser
+      - FTP_PASS=testpass
+      - PASV_MIN_PORT=21100
+      - PASV_MAX_PORT=21110
+      - ANONYMOUS_ENABLE=YES # <-- نقطة ضعف مقصودة
+    restart: unless-stopped
+
+  # 3. الخدمة الجديدة: سيرفر SSH (OpenSSH)
+  ssh:
+    image: linuxserver/openssh-server:latest
+    container_name: vuln_ssh
+    ports:
+      - "2222:22" # هنفتح بورت 2222 عشان نتجنب أي تعارض مع بورت 22 بتاع جهازك
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Africa/Cairo
+      - USER_NAME=testssh
+      - USER_PASSWORD=sshpass # <-- باسورد ضعيف مقصود
+    restart: unless-stopped
+
+  # 4. الخدمة الجديدة: قاعدة بيانات (MySQL)
+  db:
+    image: mysql:5.7 # بنستخدم إصدار قديم لزيادة فرص وجود ثغرات
+    container_name: vuln_db
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=supersecretrootpass
+      - MYSQL_DATABASE=testdb
+      - MYSQL_USER=dbuser
+      - MYSQL_PASSWORD=dbpass # <-- باسورد ضعيف مقصود
+    restart: unless-stopped
+
+
